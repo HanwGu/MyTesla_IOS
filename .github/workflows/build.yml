@@ -1,0 +1,43 @@
+name: Build iOS App via XcodeGen
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install XcodeGen
+      run: brew install xcodegen
+
+    - name: Generate Xcode Project
+      run: xcodegen generate
+
+    - name: Build Archive (.xcarchive)
+      run: |
+        xcodebuild -scheme MyTesla \
+          -configuration Release \
+          -archivePath MyTesla.xcarchive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_ALLOWED="NO" \
+          archive
+
+    - name: Export .ipa (Unsigned)
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath MyTesla.xcarchive \
+          -exportPath . \
+          -exportOptionsPlist ExportOptions.plist \
+          CODE_SIGNING_ALLOWED="NO"
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyTesla-unsigned
+        path: MyTesla.ipa
