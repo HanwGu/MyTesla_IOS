@@ -42,18 +42,16 @@ class DashboardViewModel: ObservableObject {
             // 1. 车辆详情（独立 do-catch）
             do {
                 let detail = try await APIClient.shared.getVehicle(carId: vehicleId)
-                let predicate = #Predicate<Vehicle> { $0.id == detail.id }
-                let existing = try context.fetch(FetchDescriptor<Vehicle>(predicate: predicate))
-                if existing.isEmpty {
-                    context.insert(detail)
+                let existingVehicles = try context.fetch(FetchDescriptor<Vehicle>())
+                if let existing = existingVehicles.first(where: { $0.id == detail.id }) {
+                    existing.name = detail.name
+                    existing.model = detail.model
+                    existing.softwareVersion = detail.softwareVersion
+                    existing.vin = detail.vin
+                    existing.carType = detail.carType
+                    existing.lastUpdated = Date()
                 } else {
-                    let v = existing.first!
-                    v.name = detail.name
-                    v.model = detail.model
-                    v.softwareVersion = detail.softwareVersion
-                    v.vin = detail.vin
-                    v.carType = detail.carType
-                    v.lastUpdated = Date()
+                    context.insert(detail)
                 }
                 self.vehicleDetail = detail
             } catch {
@@ -70,27 +68,25 @@ class DashboardViewModel: ObservableObject {
                 let charges = try await APIClient.shared.getCharges(carId: vehicleId, limit: 200, offset: 0)
                 let geofences = try context.fetch(FetchDescriptor<Geofence>())
                 let prices = try context.fetch(FetchDescriptor<ElectricityPrice>())
+                let existingCharges = try context.fetch(FetchDescriptor<Charge>())
                 for charge in charges {
-                    let predicate = #Predicate<Charge> { $0.id == charge.id }
-                    let existing = try context.fetch(FetchDescriptor<Charge>(predicate: predicate))
-                    if existing.isEmpty {
+                    if let existing = existingCharges.first(where: { $0.id == charge.id }) {
+                        existing.energyAdded = charge.energyAdded
+                        existing.startTime = charge.startTime
+                        existing.endTime = charge.endTime
+                        existing.positionLat = charge.positionLat
+                        existing.positionLon = charge.positionLon
+                        existing.address = charge.address
+                        existing.socStart = charge.socStart
+                        existing.socEnd = charge.socEnd
+                        existing.maxPower = charge.maxPower
+                        existing.avgPower = charge.avgPower
+                        if existing.cost == nil {
+                            existing.cost = CostCalculator.calculateCost(charge: charge, geofences: geofences, prices: prices)
+                        }
+                    } else {
                         charge.cost = CostCalculator.calculateCost(charge: charge, geofences: geofences, prices: prices)
                         context.insert(charge)
-                    } else {
-                        let c = existing.first!
-                        c.energyAdded = charge.energyAdded
-                        c.startTime = charge.startTime
-                        c.endTime = charge.endTime
-                        c.positionLat = charge.positionLat
-                        c.positionLon = charge.positionLon
-                        c.address = charge.address
-                        c.socStart = charge.socStart
-                        c.socEnd = charge.socEnd
-                        c.maxPower = charge.maxPower
-                        c.avgPower = charge.avgPower
-                        if c.cost == nil {
-                            c.cost = CostCalculator.calculateCost(charge: charge, geofences: geofences, prices: prices)
-                        }
                     }
                 }
                 try context.save()
@@ -103,15 +99,32 @@ class DashboardViewModel: ObservableObject {
                 let trips = try await APIClient.shared.getDrives(carId: vehicleId, limit: 1, offset: 0)
                 if let lastTrip = trips.first {
                     // 获取历史行程（已排序，最多100条）
-                    let historicalDescriptor = FetchDescriptor<Drive>(
+                    var historicalDescriptor = FetchDescriptor<Drive>(
                         sortBy: [SortDescriptor(\Drive.startTime, order: .reverse)]
                     )
                     historicalDescriptor.fetchLimit = DrivingInsightEngine.maxHistoricalCount
                     let historicalDrives = try context.fetch(historicalDescriptor)
 
-                    let predicate = #Predicate<Drive> { $0.id == lastTrip.id }
-                    let existing = try context.fetch(FetchDescriptor<Drive>(predicate: predicate))
-                    if existing.isEmpty {
+                    let existingDrives = try context.fetch(FetchDescriptor<Drive>())
+                    if let existing = existingDrives.first(where: { $0.id == lastTrip.id }) {
+                        existing.startTime = lastTrip.startTime
+                        existing.endTime = lastTrip.endTime
+                        existing.startAddress = lastTrip.startAddress
+                        existing.endAddress = lastTrip.endAddress
+                        existing.distance = lastTrip.distance
+                        existing.avgEnergy = lastTrip.avgEnergy
+                        existing.duration = lastTrip.duration
+                        existing.maxSpeed = lastTrip.maxSpeed
+                        existing.avgSpeed = lastTrip.avgSpeed
+                        existing.regenEnergy = lastTrip.regenEnergy
+                        existing.elevationGain = lastTrip.elevationGain
+                        existing.outsideTemp = status.outsideTemp
+                        existing.insightBadge = DrivingInsightEngine.generateInsight(
+                            for: lastTrip,
+                            recentDrives: historicalDrives
+                        )
+                        self.recentDrive = existing
+                    } else {
                         let drive = Drive(
                             id: lastTrip.id,
                             startTime: lastTrip.startTime,
@@ -132,25 +145,6 @@ class DashboardViewModel: ObservableObject {
                             recentDrives: historicalDrives
                         )
                         context.insert(drive)
-                        self.recentDrive = drive
-                    } else {
-                        let drive = existing.first!
-                        drive.startTime = lastTrip.startTime
-                        drive.endTime = lastTrip.endTime
-                        drive.startAddress = lastTrip.startAddress
-                        drive.endAddress = lastTrip.endAddress
-                        drive.distance = lastTrip.distance
-                        drive.avgEnergy = lastTrip.avgEnergy
-                        drive.duration = lastTrip.duration
-                        drive.maxSpeed = lastTrip.maxSpeed
-                        drive.avgSpeed = lastTrip.avgSpeed
-                        drive.regenEnergy = lastTrip.regenEnergy
-                        drive.elevationGain = lastTrip.elevationGain
-                        drive.outsideTemp = status.outsideTemp
-                        drive.insightBadge = DrivingInsightEngine.generateInsight(
-                            for: lastTrip,
-                            recentDrives: historicalDrives
-                        )
                         self.recentDrive = drive
                     }
                     try context.save()

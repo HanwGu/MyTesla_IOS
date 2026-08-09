@@ -83,7 +83,8 @@ class MapViewModel: ObservableObject {
         for route in polylines {
             let pointCount = route.pointCount
             for i in 0..<pointCount {
-                coordinates.append(route.points()[i])
+                let mapPoint = route.points()[i]
+                coordinates.append(MKMapPoint(x: mapPoint.x, y: mapPoint.y).coordinate)
             }
         }
         for annotation in annotations {

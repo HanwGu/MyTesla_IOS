@@ -49,16 +49,15 @@ class TripsViewModel: ObservableObject {
                 var enrichedTrips: [Trip] = []
                 if let context = modelContext {
                     // 获取已排序的历史行程（最多100条）
-                    let historicalDescriptor = FetchDescriptor<Drive>(
+                    var historicalDescriptor = FetchDescriptor<Drive>(
                         sortBy: [SortDescriptor(\Drive.startTime, order: .reverse)]
                     )
                     historicalDescriptor.fetchLimit = DrivingInsightEngine.maxHistoricalCount
                     let historicalDrives = try context.fetch(historicalDescriptor)
+                    let existingDrives = try context.fetch(FetchDescriptor<Drive>())
 
                     for var trip in newTrips {
-                        let predicate = #Predicate<Drive> { $0.id == trip.id }
-                        let existing = try context.fetch(FetchDescriptor<Drive>(predicate: predicate))
-                        if let drive = existing.first {
+                        if let drive = existingDrives.first(where: { $0.id == trip.id }) {
                             // 更新现有
                             drive.startTime = trip.startTime
                             drive.endTime = trip.endTime

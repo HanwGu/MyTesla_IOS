@@ -41,12 +41,10 @@ class StatisticsViewModel: ObservableObject {
             try Task.checkCancellation()
 
             let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date())!
-            let drivePredicate = #Predicate<Drive> { $0.startTime >= oneYearAgo }
-            let driveDescriptor = FetchDescriptor<Drive>(predicate: drivePredicate)
-            let chargeDescriptor = FetchDescriptor<Charge>(predicate: #Predicate<Charge> { $0.startTime >= oneYearAgo })
-
-            let drives = try context.fetch(driveDescriptor)
-            let charges = try context.fetch(chargeDescriptor)
+            let allDrives = try context.fetch(FetchDescriptor<Drive>())
+            let allCharges = try context.fetch(FetchDescriptor<Charge>())
+            let drives = allDrives.filter { $0.startTime >= oneYearAgo }
+            let charges = allCharges.filter { $0.startTime >= oneYearAgo }
             self.localDrives = drives
             self.localCharges = charges
             self.chargeHistory = charges.sorted { $0.startTime > $1.startTime }
@@ -59,42 +57,42 @@ class StatisticsViewModel: ObservableObject {
                 let sortedDrives = drives.sorted { $0.startTime > $1.startTime }
                 let recentDrives = Array(sortedDrives.prefix(DrivingInsightEngine.maxHistoricalCount))
 
+                let persistedDrives = try context.fetch(FetchDescriptor<Drive>())
+                let persistedCharges = try context.fetch(FetchDescriptor<Charge>())
                 for trip in newTrips {
-                    let predicate = #Predicate<Drive> { $0.id == trip.id }
-                    let existing = try context.fetch(FetchDescriptor<Drive>(predicate: predicate))
-                    if existing.isEmpty {
-                        let drive = Drive(
-                            id: trip.id,
-                            startTime: trip.startTime,
-                            endTime: trip.endTime,
-                            startAddress: trip.startAddress,
-                            endAddress: trip.endAddress,
-                            distance: trip.distance,
-                            avgEnergy: trip.avgEnergy,
-                            duration: trip.duration,
-                            maxSpeed: trip.maxSpeed,
-                            avgSpeed: trip.avgSpeed,
-                            regenEnergy: trip.regenEnergy,
-                            elevationGain: trip.elevationGain,
-                            outsideTemp: nil
-                        )
-                        drive.insightBadge = DrivingInsightEngine.generateInsight(
-                            for: trip,
-                            recentDrives: recentDrives
-                        )
-                        context.insert(drive)
+                    if persistedDrives.contains(where: { $0.id == trip.id }) {
+                        continue
                     }
+                    let drive = Drive(
+                        id: trip.id,
+                        startTime: trip.startTime,
+                        endTime: trip.endTime,
+                        startAddress: trip.startAddress,
+                        endAddress: trip.endAddress,
+                        distance: trip.distance,
+                        avgEnergy: trip.avgEnergy,
+                        duration: trip.duration,
+                        maxSpeed: trip.maxSpeed,
+                        avgSpeed: trip.avgSpeed,
+                        regenEnergy: trip.regenEnergy,
+                        elevationGain: trip.elevationGain,
+                        outsideTemp: nil
+                    )
+                    drive.insightBadge = DrivingInsightEngine.generateInsight(
+                        for: trip,
+                        recentDrives: recentDrives
+                    )
+                    context.insert(drive)
                 }
                 for charge in newCharges {
-                    let predicate = #Predicate<Charge> { $0.id == charge.id }
-                    let existing = try context.fetch(FetchDescriptor<Charge>(predicate: predicate))
-                    if existing.isEmpty {
-                        context.insert(charge)
+                    if persistedCharges.contains(where: { $0.id == charge.id }) {
+                        continue
                     }
+                    context.insert(charge)
                 }
                 try context.save()
-                self.localDrives = try context.fetch(driveDescriptor)
-                self.localCharges = try context.fetch(chargeDescriptor)
+                self.localDrives = try context.fetch(FetchDescriptor<Drive>()).filter { $0.startTime >= oneYearAgo }
+                self.localCharges = try context.fetch(FetchDescriptor<Charge>()).filter { $0.startTime >= oneYearAgo }
                 self.chargeHistory = self.localCharges.sorted { $0.startTime > $1.startTime }
             }
 

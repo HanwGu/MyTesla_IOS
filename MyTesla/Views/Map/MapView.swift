@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import MapKit
 import CoreLocation
 
@@ -30,7 +31,6 @@ struct MapView: View {
             }
             .mapControls {
                 MapUserLocationButton()
-                MapPitchButton()
             }
             .onAppear {
                 locationManager.requestWhenInUseAuthorization()
@@ -77,18 +77,16 @@ struct MapView: View {
             if let first = vehicles.first {
                 do {
                     let detail = try await APIClient.shared.getVehicle(carId: first.id)
-                    let predicate = #Predicate<Vehicle> { $0.id == detail.id }
-                    let existing = try modelContext.fetch(FetchDescriptor<Vehicle>(predicate: predicate))
-                    if existing.isEmpty {
-                        modelContext.insert(detail)
+                    let existingVehicles = try modelContext.fetch(FetchDescriptor<Vehicle>())
+                    if let existing = existingVehicles.first(where: { $0.id == detail.id }) {
+                        existing.name = detail.name
+                        existing.model = detail.model
+                        existing.softwareVersion = detail.softwareVersion
+                        existing.vin = detail.vin
+                        existing.carType = detail.carType
+                        existing.lastUpdated = Date()
                     } else {
-                        let v = existing.first!
-                        v.name = detail.name
-                        v.model = detail.model
-                        v.softwareVersion = detail.softwareVersion
-                        v.vin = detail.vin
-                        v.carType = detail.carType
-                        v.lastUpdated = Date()
+                        modelContext.insert(detail)
                     }
                     try modelContext.save()
                 } catch {

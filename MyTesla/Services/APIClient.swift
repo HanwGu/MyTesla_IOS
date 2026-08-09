@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Dispatch
 
 // MARK: - Cache Actor
 actor CacheManager {
@@ -210,12 +211,12 @@ private struct VehicleDetailResponse: Decodable {
 }
 
 // MARK: - APIClient
-// 线程安全说明：仅 baseURL 和 token 的读写受 NSLock 保护，其他属性为不可变或线程安全类型
+// 线程安全说明：仅 baseURL 和 token 的读写受串行队列保护，其他属性为不可变或线程安全类型
 class APIClient: DataSource {
     static let shared = APIClient()
     private var baseURL: String = ""
     private var token: String = ""
-    private let lock = NSLock()
+    private let stateQueue = DispatchQueue(label: "com.teslamtate.api-client.state")
 
     private static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
@@ -226,19 +227,19 @@ class APIClient: DataSource {
     private let cache = CacheManager()
 
     func configure(baseURL: String, token: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        self.baseURL = baseURL
-        self.token = token
+        stateQueue.sync {
+            self.baseURL = baseURL
+            self.token = token
+        }
     }
 
     private func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", forceRefresh: Bool = false) async throws -> T {
         let currentBaseURL: String
         let currentToken: String
-        lock.lock()
-        currentBaseURL = self.baseURL
-        currentToken = self.token
-        lock.unlock()
+        stateQueue.sync {
+            currentBaseURL = self.baseURL
+            currentToken = self.token
+        }
 
         guard let url = endpoint.buildURL(baseURL: currentBaseURL) else {
             throw APIError.invalidURL

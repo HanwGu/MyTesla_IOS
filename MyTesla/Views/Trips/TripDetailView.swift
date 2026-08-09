@@ -115,9 +115,8 @@ struct TripDetailView: View {
     }
 
     private func loadDriveData() {
-        let predicate = #Predicate<Drive> { $0.id == trip.id }
-        let descriptor = FetchDescriptor<Drive>(predicate: predicate)
-        if let drive = try? modelContext.fetch(descriptor).first {
+        let drives = (try? modelContext.fetch(FetchDescriptor<Drive>())) ?? []
+        if let drive = drives.first(where: { $0.id == trip.id }) {
             displayCategory = drive.category
             displayNote = drive.note
         } else {
@@ -183,9 +182,8 @@ struct TripEditView: View {
     }
 
     private func loadDrive() {
-        let predicate = #Predicate<Drive> { $0.id == trip.id }
-        let descriptor = FetchDescriptor<Drive>(predicate: predicate)
-        if let drive = try? modelContext.fetch(descriptor).first {
+        let drives = (try? modelContext.fetch(FetchDescriptor<Drive>())) ?? []
+        if let drive = drives.first(where: { $0.id == trip.id }) {
             driveToEdit = drive
             category = drive.category ?? ""
             note = drive.note ?? ""
