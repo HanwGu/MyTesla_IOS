@@ -94,11 +94,18 @@ struct TripDetailView: View {
         .navigationTitle("行程详情")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingEditSheet) {
-            TripEditView(trip: trip, onSave: { updatedTrip in
-                displayCategory = updatedTrip.category
-                displayNote = updatedTrip.note
+            TripEditView(trip: trip) { note, favorite, category in
+                let normalizedNote = note.isEmpty ? nil : note
+                let normalizedCategory = category.isEmpty ? nil : category
+                displayCategory = normalizedCategory
+                displayNote = normalizedNote
+
+                var updatedTrip = trip
+                updatedTrip.note = normalizedNote
+                updatedTrip.category = normalizedCategory
+                updatedTrip.favorite = favorite
                 onSave(updatedTrip)
-            })
+            }
         }
         .onAppear {
             loadDriveData()
@@ -142,23 +149,34 @@ struct DetailRow: View {
 }
 
 struct TripEditView: View {
-    let trip: Trip
-    let onSave: (Trip) -> Void
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @State private var category: String = ""
-    @State private var note: String = ""
-    @State private var driveToEdit: Drive?
-    @State private var isLoading = true
+
+    let trip: Trip
+    @State private var note: String
+    @State private var favorite: Bool
+    @State private var category: String
+
+    let onSave: (String, Bool, String) -> Void
+
+    init(trip: Trip, onSave: @escaping (String, Bool, String) -> Void) {
+        self.trip = trip
+        self._note = State(initialValue: trip.note ?? "")
+        self._favorite = State(initialValue: trip.favorite)
+        self._category = State(initialValue: trip.category ?? "")
+        self.onSave = onSave
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                if isLoading {
-                    ProgressView()
-                } else {
-                    TextField("分类 (通勤/个人/商务)", text: $category)
-                    TextField("备注", text: $note)
+                Section("备注") {
+                    TextField("输入备注", text: $note)
+                }
+                Section("分类") {
+                    TextField("输入分类（如：通勤、自驾游）", text: $category)
+                }
+                Section("收藏") {
+                    Toggle("收藏此行程", isOn: $favorite)
                 }
             }
             .navigationTitle("编辑行程")
@@ -169,37 +187,11 @@ struct TripEditView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        saveChanges()
+                        onSave(note, favorite, category)
                         dismiss()
                     }
-                    .disabled(isLoading)
                 }
             }
-            .onAppear {
-                loadDrive()
-            }
         }
-    }
-
-    private func loadDrive() {
-        let drives = (try? modelContext.fetch(FetchDescriptor<Drive>())) ?? []
-        if let drive = drives.first(where: { $0.id == trip.id }) {
-            driveToEdit = drive
-            category = drive.category ?? ""
-            note = drive.note ?? ""
-        }
-        isLoading = false
-    }
-
-    private func saveChanges() {
-        guard let drive = driveToEdit else { return }
-        drive.category = category.isEmpty ? nil : category
-        drive.note = note.isEmpty ? nil : note
-        try? modelContext.save()
-
-        var updatedTrip = trip
-        updatedTrip.category = drive.category
-        updatedTrip.note = drive.note
-        onSave(updatedTrip)
     }
 }

@@ -33,13 +33,14 @@ class DashboardViewModel: ObservableObject {
             errorMessage = "未配置车辆或数据库"
             return
         }
+
         isLoading = true
         errorMessage = nil
+        var syncErrors: [Error] = []
 
         do {
             try Task.checkCancellation()
 
-            // 1. 车辆详情（独立 do-catch）
             do {
                 let detail = try await APIClient.shared.getVehicle(carId: vehicleId)
                 let existingVehicles = try context.fetch(FetchDescriptor<Vehicle>())
@@ -55,15 +56,25 @@ class DashboardViewModel: ObservableObject {
                 }
                 self.vehicleDetail = detail
             } catch {
-                // 忽略
+                syncErrors.append(error)
             }
 
-            // 2. 车辆状态（核心数据）
-            let status = try await APIClient.shared.getVehicleStatus(carId: vehicleId)
+            let status: VehicleStatus
+            do {
+                status = try await APIClient.shared.getVehicleStatus(carId: vehicleId)
+            } catch {
+                syncErrors.append(error)
+                isLoading = false
+                if !syncErrors.isEmpty {
+                    let messages = syncErrors.map { $0.localizedDescription }.joined(separator: "\n")
+                    errorMessage = "部分数据同步失败（\(syncErrors.count) 个错误）:\n\(messages)"
+                }
+                return
+            }
+
             self.status = status
             self.lastUpdated = Date()
 
-            // 3. 充电记录（独立 do-catch）
             do {
                 let charges = try await APIClient.shared.getCharges(carId: vehicleId, limit: 200, offset: 0)
                 let geofences = try context.fetch(FetchDescriptor<Geofence>())
@@ -91,14 +102,12 @@ class DashboardViewModel: ObservableObject {
                 }
                 try context.save()
             } catch {
-                // 忽略
+                syncErrors.append(error)
             }
 
-            // 4. 同步最近行程（1条）
             do {
                 let trips = try await APIClient.shared.getDrives(carId: vehicleId, limit: 1, offset: 0)
                 if let lastTrip = trips.first {
-                    // 获取历史行程（已排序，最多100条）
                     var historicalDescriptor = FetchDescriptor<Drive>(
                         sortBy: [SortDescriptor(\Drive.startTime, order: .reverse)]
                     )
@@ -150,7 +159,7 @@ class DashboardViewModel: ObservableObject {
                     try context.save()
                 }
             } catch {
-                // 忽略
+                syncErrors.append(error)
             }
 
             updateCardOrder(status: status)
@@ -158,7 +167,14 @@ class DashboardViewModel: ObservableObject {
         } catch is CancellationError {
             // 取消
         } catch {
-            errorMessage = "刷新失败: \(error.localizedDescription)"
+            syncErrors.append(error)
+        }
+
+        if !syncErrors.isEmpty {
+            let messages = syncErrors.map { $0.localizedDescription }.joined(separator: "\n")
+            errorMessage = "部分数据同步失败（\(syncErrors.count) 个错误）:\n\(messages)"
+        } else {
+            errorMessage = nil
         }
 
         isLoading = false

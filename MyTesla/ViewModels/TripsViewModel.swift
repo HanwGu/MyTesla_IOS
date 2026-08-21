@@ -78,6 +78,7 @@ class TripsViewModel: ObservableObject {
                             // 回填到 Trip
                             trip.category = drive.category
                             trip.note = drive.note
+                            trip.favorite = drive.favorite
                             trip.insightBadge = drive.insightBadge
                         } else {
                             // 新建
@@ -94,13 +95,15 @@ class TripsViewModel: ObservableObject {
                                 avgSpeed: trip.avgSpeed,
                                 regenEnergy: trip.regenEnergy,
                                 elevationGain: trip.elevationGain,
-                                outsideTemp: nil
+                                outsideTemp: nil,
+                                favorite: trip.favorite
                             )
                             drive.insightBadge = DrivingInsightEngine.generateInsight(
                                 for: trip,
                                 recentDrives: historicalDrives
                             )
                             context.insert(drive)
+                            trip.favorite = drive.favorite
                             trip.insightBadge = drive.insightBadge
                         }
                         enrichedTrips.append(trip)
@@ -153,11 +156,31 @@ class TripsViewModel: ObservableObject {
         return result
     }
 
-    func updateTrip(_ updatedTrip: Trip) {
-        if let index = trips.firstIndex(where: { $0.id == updatedTrip.id }) {
-            trips[index] = updatedTrip
-            cachedGroupedTrips.removeAll()
-            lastTripsHash = 0
+    func updateTrip(tripId: Int, note: String?, favorite: Bool, category: String?) {
+        guard let context = modelContext else { return }
+
+        do {
+            let drives = try context.fetch(FetchDescriptor<Drive>())
+            guard let drive = drives.first(where: { $0.id == tripId }) else { return }
+
+            drive.note = note?.isEmpty == true ? nil : note
+            drive.favorite = favorite
+            drive.category = category?.isEmpty == true ? nil : category
+            try context.save()
+
+            if let index = trips.firstIndex(where: { $0.id == tripId }) {
+                trips[index].note = drive.note
+                trips[index].favorite = drive.favorite
+                trips[index].category = drive.category
+                cachedGroupedTrips.removeAll()
+                lastTripsHash = 0
+            }
+        } catch {
+            errorMessage = "更新行程失败: \(error.localizedDescription)"
         }
+    }
+
+    func updateTrip(_ updatedTrip: Trip) {
+        updateTrip(tripId: updatedTrip.id, note: updatedTrip.note, favorite: updatedTrip.favorite, category: updatedTrip.category)
     }
 }

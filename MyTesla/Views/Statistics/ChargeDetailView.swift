@@ -24,9 +24,9 @@ struct ChargeDetailView: View {
                 }
             } else if let detail = viewModel.detail {
                 Section("充电概况") {
-                    DetailRow(label: "开始时间", value: detail.startTime.formatted(date: .abbreviated, time: .shortened))
-                    DetailRow(label: "结束时间", value: detail.endTime.formatted(date: .abbreviated, time: .shortened))
-                    let duration = Int(detail.endTime.timeIntervalSince(detail.startTime) / 60)
+                    DetailRow(label: "开始时间", value: formattedDate(detail.startTime, fallback: "未知开始时间"))
+                    DetailRow(label: "结束时间", value: formattedDate(detail.endTime, fallback: "未知结束时间"))
+                    let duration = detail.endTime >= detail.startTime ? Int(detail.endTime.timeIntervalSince(detail.startTime) / 60) : 0
                     DetailRow(label: "充电时长", value: duration > 0 ? "\(duration) 分钟" : "< 1 分钟")
                     DetailRow(label: "位置", value: detail.address ?? "未知")
                     DetailRow(label: "SOC变化", value: "\(detail.socStart)% → \(detail.socEnd)%")
@@ -67,5 +67,10 @@ struct ChargeDetailView: View {
             viewModel.configure(vehicleId: vehicleId, chargeId: charge.id)
             await viewModel.loadDetail()
         }
+    }
+
+    private func formattedDate(_ date: Date?, fallback: String) -> String {
+        guard let date else { return fallback }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }

@@ -46,9 +46,20 @@ struct HeatmapView: View {
         var dates: [Date] = []
         for weekOffset in 0..<53 {
             guard let date = calendar.date(byAdding: .day, value: weekOffset * 7, to: startOfYear),
-                  calendar.component(.year, from: date) == currentYear else { break }
+                  calendar.component(.year, from: date) == currentYear,
+                  isValidDate(date) else { break }
             dates.append(date)
         }
         return dates
+    }
+
+    private func isValidDate(_ date: Date) -> Bool {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day else {
+            return false
+        }
+        return year > 2000 && month >= 1 && month <= 12 && day >= 1 && day <= 31
     }
 }

@@ -5,7 +5,7 @@
 
 import Foundation
 
-struct Trip: Identifiable {
+struct Trip: Identifiable, Hashable {
     let id: Int
     let startTime: Date
     let endTime: Date
@@ -26,5 +26,30 @@ struct Trip: Identifiable {
 
     var category: String?
     var note: String?
+    var favorite: Bool = false
     var insightBadge: String?
+
+    init(id: Int, startTime: Date, endTime: Date, startAddress: String? = nil, endAddress: String? = nil, startLat: Double? = nil, startLon: Double? = nil, endLat: Double? = nil, endLon: Double? = nil, distance: Double, avgEnergy: Double, duration: Int, maxSpeed: Double? = nil, avgSpeed: Double? = nil, elevationGain: Double? = nil, regenEnergy: Double? = nil, outsideTemp: Double? = nil, category: String? = nil, note: String? = nil, favorite: Bool = false, insightBadge: String? = nil) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.startAddress = startAddress
+        self.endAddress = endAddress
+        self.startLat = startLat
+        self.startLon = startLon
+        self.endLat = endLat
+        self.endLon = endLon
+        self.distance = distance
+        self.avgEnergy = avgEnergy
+        self.duration = duration
+        self.maxSpeed = maxSpeed
+        self.avgSpeed = avgSpeed
+        self.elevationGain = elevationGain
+        self.regenEnergy = regenEnergy
+        self.outsideTemp = outsideTemp
+        self.category = category
+        self.note = note
+        self.favorite = favorite
+        self.insightBadge = insightBadge
+    }
 }

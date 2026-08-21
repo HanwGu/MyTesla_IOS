@@ -24,9 +24,10 @@ final class Drive {
     var category: String?
     var subcategory: String?
     var note: String?
+    var favorite: Bool = false
     var insightBadge: String?
 
-    init(id: Int, startTime: Date, endTime: Date, startAddress: String? = nil, endAddress: String? = nil, distance: Double, avgEnergy: Double, duration: Int, maxSpeed: Double? = nil, avgSpeed: Double? = nil, regenEnergy: Double? = nil, elevationGain: Double? = nil, outsideTemp: Double? = nil, category: String? = nil, subcategory: String? = nil, note: String? = nil, insightBadge: String? = nil) {
+    init(id: Int, startTime: Date, endTime: Date, startAddress: String? = nil, endAddress: String? = nil, distance: Double, avgEnergy: Double, duration: Int, maxSpeed: Double? = nil, avgSpeed: Double? = nil, regenEnergy: Double? = nil, elevationGain: Double? = nil, outsideTemp: Double? = nil, category: String? = nil, subcategory: String? = nil, note: String? = nil, favorite: Bool = false, insightBadge: String? = nil) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
@@ -43,6 +44,7 @@ final class Drive {
         self.category = category
         self.subcategory = subcategory
         self.note = note
+        self.favorite = favorite
         self.insightBadge = insightBadge
     }
 }

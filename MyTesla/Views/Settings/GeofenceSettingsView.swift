@@ -48,6 +48,7 @@ struct GeofenceSettingsView: View {
             modelContext.delete(geofences[index])
         }
         try? modelContext.save()
+        NotificationCenter.default.post(name: NSNotification.Name("GeofenceDidChange"), object: nil)
         Task {
             await settingsViewModel.batchUpdateCosts()
         }
@@ -87,6 +88,7 @@ struct AddGeofenceView: View {
                         let fence = Geofence(name: name, latitude: lat, longitude: lon, radius: rad)
                         modelContext.insert(fence)
                         try? modelContext.save()
+                        NotificationCenter.default.post(name: NSNotification.Name("GeofenceDidChange"), object: nil)
                         dismiss()
                     }
                     .disabled(name.isEmpty || latitude.isEmpty || longitude.isEmpty)
