@@ -7,7 +7,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Charge {
+final class Charge: @unchecked Sendable {
     @Attribute(.unique) var id: Int
     var startTime: Date
     var endTime: Date

@@ -63,10 +63,8 @@ struct MapView: View {
             .task {
                 await loadMapData()
             }
-            .onChange(of: viewModel.cachedRegion) { _, newRegion in
-                if let region = newRegion {
-                    position = .region(region)
-                }
+            .onReceive(viewModel.$cachedRegion.compactMap { $0 }) { region in
+                position = .region(region)
             }
         }
     }

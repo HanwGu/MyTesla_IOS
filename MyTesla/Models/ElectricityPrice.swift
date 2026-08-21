@@ -7,7 +7,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class ElectricityPrice {
+final class ElectricityPrice: @unchecked Sendable {
     @Attribute(.unique) var id: UUID
     var name: String
     var startHour: Int

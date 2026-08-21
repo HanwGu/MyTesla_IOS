@@ -7,7 +7,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Drive {
+final class Drive: @unchecked Sendable {
     @Attribute(.unique) var id: Int
     var startTime: Date
     var endTime: Date

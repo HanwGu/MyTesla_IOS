@@ -45,7 +45,7 @@ class SettingsViewModel: ObservableObject {
         isProcessing = true
         saveMessage = nil
 
-        Task.detached(priority: .userInitiated) { [weak self, container] in
+        Task(priority: .userInitiated) { [weak self, container] in
             guard let self = self else { return }
 
             let backgroundContext = ModelContext(container)

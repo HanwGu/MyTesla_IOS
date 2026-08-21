@@ -7,7 +7,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Geofence {
+final class Geofence: @unchecked Sendable {
     @Attribute(.unique) var name: String
     var latitude: Double
     var longitude: Double

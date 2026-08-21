@@ -110,9 +110,7 @@ class StatisticsViewModel: ObservableObject {
 
             let drivesCopy = self.localDrives
             let chargesCopy = self.localCharges
-            let stats = await Task.detached(priority: .userInitiated) {
-                return StatisticsViewModel.computeStatistics(drives: drivesCopy, charges: chargesCopy)
-            }.value
+            let stats = StatisticsViewModel.computeStatistics(drives: drivesCopy, charges: chargesCopy)
 
             self.weekCompare = stats.weekCompare
             self.monthCompare = stats.monthCompare
@@ -128,7 +126,7 @@ class StatisticsViewModel: ObservableObject {
         isLoading = false
     }
 
-    private static func computeStatistics(drives: [Drive], charges: [Charge]) -> (weekCompare: (Double, Double, Double)?, monthCompare: (Double, Double, Double)?, calendarData: [Date: (Double, Double, Double)], heatmapData: [Date: Double], weeklyReview: String, monthlyReview: String) {
+    static func computeStatistics(drives: [Drive], charges: [Charge]) -> (weekCompare: (Double, Double, Double)?, monthCompare: (Double, Double, Double)?, calendarData: [Date: (Double, Double, Double)], heatmapData: [Date: Double], weeklyReview: String, monthlyReview: String) {
         let calendar = Calendar.current
         let now = Date()
 

@@ -247,9 +247,9 @@ class APIClient: DataSource {
     }
 
     private func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", forceRefresh: Bool = false) async throws -> T {
-        let currentBaseURL: String
-        let currentToken: String
-        let currentHeaderName: String
+        var currentBaseURL: String
+        var currentToken: String
+        var currentHeaderName: String
         stateQueue.sync {
             currentBaseURL = self.baseURL
             currentToken = self.token

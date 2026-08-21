@@ -7,7 +7,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Vehicle {
+final class Vehicle: @unchecked Sendable {
     @Attribute(.unique) var id: Int
     var name: String
     var model: String?

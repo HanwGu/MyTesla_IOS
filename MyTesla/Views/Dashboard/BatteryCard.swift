@@ -35,11 +35,9 @@ struct BatteryCard: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                     .monospacedDigit()
-                if let odometer = status.odometer {
-                    Text("总里程 \(Int(odometer)) km")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                Text("总里程 \(Int(status.odometer)) km")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             .padding(.leading, 8)
             Spacer()

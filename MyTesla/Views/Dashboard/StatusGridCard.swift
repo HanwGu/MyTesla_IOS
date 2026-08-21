@@ -22,7 +22,7 @@ struct StatusGridCard: View {
             )
             StatusItem(
                 icon: "speedometer",
-                value: status.odometer.map { "\(Int($0))" } ?? "--",
+                value: "\(Int(status.odometer))",
                 label: "总里程 km"
             )
             StatusItem(
