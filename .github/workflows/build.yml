@@ -18,19 +18,19 @@ jobs:
 
     - name: Build Archive (.xcarchive)
       run: |
-        xcodebuild -scheme MyTesla \\
-          -configuration Release \\
-          -archivePath MyTesla.xcarchive \\
-          CODE_SIGN_IDENTITY="" \\
-          CODE_SIGNING_ALLOWED="NO" \\
+        xcodebuild -scheme MyTesla \
+          -configuration Release \
+          -archivePath MyTesla.xcarchive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_ALLOWED="NO" \
           archive
 
     - name: Export .ipa (Unsigned)
       run: |
-        xcodebuild -exportArchive \\
-          -archivePath MyTesla.xcarchive \\
-          -exportPath . \\
-          -exportOptionsPlist ExportOptions.plist \\
+        xcodebuild -exportArchive \
+          -archivePath MyTesla.xcarchive \
+          -exportPath . \
+          -exportOptionsPlist ExportOptions.plist \
           CODE_SIGNING_ALLOWED="NO"
 
     - name: Upload IPA Artifact
