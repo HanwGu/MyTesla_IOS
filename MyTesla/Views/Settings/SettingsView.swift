@@ -19,6 +19,9 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                     SecureField("API Token", text: $viewModel.apiToken)
+                    TextField("Header 名称", text: $viewModel.apiTokenHeader)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
                     Button("保存配置") {
                         Task { _ = await viewModel.saveConfiguration() }
                     }

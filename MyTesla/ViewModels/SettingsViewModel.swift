@@ -10,6 +10,7 @@ import SwiftData
 class SettingsViewModel: ObservableObject {
     @AppStorage("serverURL") var serverURL: String = ""
     @AppStorage("apiToken") var apiToken: String = ""
+    @AppStorage("apiTokenHeader") var apiTokenHeader: String = "Authorization"
     @Published var isSaving = false
     @Published var saveMessage: String?
     @Published var isProcessing = false
@@ -22,7 +23,7 @@ class SettingsViewModel: ObservableObject {
         }
         isSaving = true
         saveMessage = nil
-        APIClient.shared.configure(baseURL: serverURL, token: apiToken)
+        APIClient.shared.configure(baseURL: serverURL, token: apiToken, tokenHeaderName: apiTokenHeader)
         do {
             _ = try await APIClient.shared.getVehicles()
             saveMessage = "✅ 连接成功"

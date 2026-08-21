@@ -216,6 +216,7 @@ class APIClient: DataSource {
     static let shared = APIClient()
     private var baseURL: String = ""
     private var token: String = ""
+    private var tokenHeaderName: String = "Authorization"
     private let stateQueue = DispatchQueue(label: "com.teslamtate.api-client.state")
 
     private static let decoder: JSONDecoder = {
@@ -226,19 +227,33 @@ class APIClient: DataSource {
 
     private let cache = CacheManager()
 
-    func configure(baseURL: String, token: String) {
+    func configure(baseURL: String, token: String, tokenHeaderName: String = "Authorization") {
+        let normalizedBaseURL = Self.normalizeBaseURL(baseURL)
+        let normalizedHeaderName = tokenHeaderName.trimmingCharacters(in: .whitespacesAndNewlines)
         stateQueue.sync {
-            self.baseURL = baseURL
+            self.baseURL = normalizedBaseURL
             self.token = token
+            self.tokenHeaderName = normalizedHeaderName.isEmpty ? "Authorization" : normalizedHeaderName
         }
+    }
+
+    private static func normalizeBaseURL(_ rawValue: String) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutTrailingSlash = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
+        if withoutTrailingSlash.lowercased().hasSuffix("/api") {
+            return String(withoutTrailingSlash.dropLast(4))
+        }
+        return withoutTrailingSlash
     }
 
     private func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", forceRefresh: Bool = false) async throws -> T {
         let currentBaseURL: String
         let currentToken: String
+        let currentHeaderName: String
         stateQueue.sync {
             currentBaseURL = self.baseURL
             currentToken = self.token
+            currentHeaderName = self.tokenHeaderName
         }
 
         guard let url = endpoint.buildURL(baseURL: currentBaseURL) else {
@@ -255,7 +270,7 @@ class APIClient: DataSource {
 
         if shouldCache {
             let data = try await cache.fetch(key: urlString) {
-                let (data, _) = try await self.performRequest(url: url, method: method, token: currentToken)
+                let (data, _) = try await self.performRequest(url: url, method: method, token: currentToken, tokenHeaderName: currentHeaderName)
                 return data
             }
             do {
@@ -265,25 +280,42 @@ class APIClient: DataSource {
                 throw APIError.decodingFailed
             }
         } else {
-            let (data, _) = try await performRequest(url: url, method: method, token: currentToken)
+            let (data, _) = try await performRequest(url: url, method: method, token: currentToken, tokenHeaderName: currentHeaderName)
             return try Self.decoder.decode(T.self, from: data)
         }
     }
 
-    private func performRequest(url: URL, method: String, token: String) async throws -> (Data, URLResponse) {
+    private func performRequest(url: URL, method: String, token: String, tokenHeaderName: String) async throws -> (Data, URLResponse) {
         var request = URLRequest(url: url)
         request.httpMethod = method
 
         if !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let sanitizedHeaderName = tokenHeaderName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let headerName = sanitizedHeaderName.isEmpty ? "Authorization" : sanitizedHeaderName
+            let headerValue: String
+            if headerName.lowercased() == "authorization" {
+                headerValue = token.hasPrefix("Bearer ") ? token : "Bearer \(token)"
+            } else {
+                headerValue = token.hasPrefix("Bearer ") ? String(token.dropFirst("Bearer ".count)) : token
+            }
+            request.setValue(headerValue, forHTTPHeaderField: headerName)
         }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestFailed
         }
-        return (data, response)
+        switch httpResponse.statusCode {
+        case 200...299:
+            return (data, response)
+        case 401:
+            throw APIError.unauthorized
+        case 403:
+            throw APIError.forbidden
+        default:
+            throw APIError.requestFailed
+        }
     }
 
     // MARK: - Vehicle List
@@ -385,5 +417,7 @@ class APIClient: DataSource {
 enum APIError: Error {
     case invalidURL
     case requestFailed
+    case unauthorized
+    case forbidden
     case decodingFailed
 }
